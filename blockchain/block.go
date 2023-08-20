@@ -7,14 +7,14 @@ import (
 )
 
 type Block struct {
-	Hash     []byte
-	Data     []byte
-	PrevHash []byte
-	Nonce    int
+	Hash         []byte
+	Transactions []*Transaction
+	PrevHash     []byte
+	Nonce        int
 }
 
-func CreateBlock(data string, prevHash []byte) *Block {
-	block := &Block{[]byte{}, []byte(data), prevHash, 0}
+func CreateBlock(transactions []*Transaction, prevHash []byte) *Block {
+	block := &Block{[]byte{}, transactions, prevHash, 0}
 	pow := NewProof(block)
 	nonce, hash := pow.Run()
 
@@ -25,7 +25,7 @@ func CreateBlock(data string, prevHash []byte) *Block {
 }
 
 func Genesis() *Block {
-	return CreateBlock("Genesis", []byte{})
+	return CreateBlock([]*Transaction{}, []byte{})
 }
 
 func (b *Block) Serialize() []byte {
@@ -49,6 +49,28 @@ func Deserialize(data []byte) *Block {
 	Handle(err)
 
 	return &block
+}
+
+func (b *Block) ValidateBlock(prevHash []byte) bool {
+	// Verify the proof of work
+	pow := NewProof(b)
+	if !pow.Validate() {
+		return false
+	}
+
+	// Check the previous hash
+	if !bytes.Equal(b.PrevHash, prevHash) {
+		return false
+	}
+
+	// Validate all transactions in the block
+	for _, tx := range b.Transactions {
+		if !tx.ValidateTransaction() {
+			return false
+		}
+	}
+
+	return true
 }
 
 func Handle(err error) {

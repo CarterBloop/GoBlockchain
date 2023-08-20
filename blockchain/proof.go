@@ -38,10 +38,15 @@ func NewProof(b *Block) *ProofOfWork {
 }
 
 func (pow *ProofOfWork) InitData(nonce int) []byte {
+	txData := []byte{}
+	for _, tx := range pow.Block.Transactions {
+		txData = append(txData, tx.Serialize()...)
+	}
+
 	data := bytes.Join(
 		[][]byte{
 			pow.Block.PrevHash,
-			pow.Block.Data,
+			txData,
 			ToHex(int64(nonce)),
 			ToHex(int64(Difficulty)),
 		},

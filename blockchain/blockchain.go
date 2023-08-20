@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
+	"strings"
+	"strconv"
 
 	"github.com/dgraph-io/badger"
 )
@@ -65,7 +68,8 @@ func InitBlockChain() *BlockChain {
 	return &blockchain
 }
 
-func (chain *BlockChain) AddBlock(data string) {
+
+func (chain *BlockChain) AddBlock(transactions []*Transaction) {
 	var lastHash []byte
 
 	err := chain.Database.View(func(txn *badger.Txn) error {
@@ -80,7 +84,13 @@ func (chain *BlockChain) AddBlock(data string) {
 	})
 	Handle(err)
 
-	newBlock := CreateBlock(data, lastHash)
+	newBlock := CreateBlock(transactions, lastHash)
+
+	// Validate the new block
+	if !newBlock.ValidateBlock(lastHash) {
+		log.Println("Invalid block")
+		return
+	}
 
 	err = chain.Database.Update(func(txn *badger.Txn) error {
 		err := txn.Set(newBlock.Hash, newBlock.Serialize())
@@ -119,4 +129,64 @@ func (iter *BlockChainIterator) Next() *Block {
 	iter.CurrentHash = block.PrevHash
 
 	return block
+}
+
+func (chain *BlockChain) ToString() string {
+	var result strings.Builder
+
+	iter := chain.Iterator()
+
+	for {
+		block := iter.Next()
+
+		result.WriteString(fmt.Sprintf("Prev. hash: %x\n", block.PrevHash))
+		var i = 1
+		for _, tx := range block.Transactions {
+			result.WriteString(fmt.Sprintf("  (%d)\n",i))
+			i++
+			result.WriteString(fmt.Sprintf("    - Transaction ID: %s\n", tx.ID))
+			result.WriteString(fmt.Sprintf("    - Voter ID: %s\n", tx.VoterID))
+			result.WriteString(fmt.Sprintf("    - Proposal: %s\n", tx.Proposal))
+			result.WriteString(fmt.Sprintf("    - Signature: %x\n", tx.Signature))
+		}
+		result.WriteString(fmt.Sprintf("Hash: %x\n", block.Hash))
+		pow := NewProof(block)
+		result.WriteString(fmt.Sprintf("PoW: %s\n", strconv.FormatBool(pow.Validate())))
+		result.WriteString("\n")
+
+		if len(block.PrevHash) == 0 {
+			break
+		}
+	}
+
+	return result.String()
+}
+
+// Mempool
+
+var Mempool = make([]*Transaction, 0)
+var MempoolLock = sync.Mutex{}
+
+func (chain *BlockChain) AddTransactionToMempool(transaction *Transaction) {
+	MempoolLock.Lock()
+	Mempool = append(Mempool, transaction)
+	MempoolLock.Unlock()
+}
+
+const MempoolSizeThreshold = 10
+
+func (chain *BlockChain) MineMempool() {
+	for {
+		MempoolLock.Lock()
+		if len(Mempool) < MempoolSizeThreshold {
+			MempoolLock.Unlock()
+			continue
+		}
+		transactions := Mempool[:]
+		Mempool = make([]*Transaction, 0)
+		MempoolLock.Unlock()
+
+		chain.AddBlock(transactions)
+		fmt.Println("Mined new block with", len(transactions), "transactions")
+	}
 }
