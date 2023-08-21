@@ -1,17 +1,3 @@
-# GoBlockchain
-
-## Introduction
-
-GoBlockchain is a simple implementation of a blockchain in Go. It provides an accessible platform to understand the basic working principles of a blockchain system.
-
-## Features
-
-- Creation of a genesis block upon initialization.
-- Addition of new blocks with user-specified data.
-- Implementation of a proof-of-work system, validating each new block.
-- Serialization of the blockchain to persist data.
-- Command-line interface for interaction.
-
 # Blockchain-based Voting System
 
 ## How-to
@@ -19,5 +5,7 @@ GoBlockchain is a simple implementation of a blockchain in Go. It provides an ac
 ```shell
 git clone github.com/carterbloop/goblockchain
 cd goblockchain
-go run main.go
+go run main.go -data-dir tmp -server-port 8080 -entry-ip localhost -entry-port 8081
+go run main.go -data-dir tmp2 -server-port 8081 -entry-ip localhost -entry-port 8080
+go run main.go -data-dir tmp3 -server-port 8082 -entry-ip localhost -entry-port 8081
 ```

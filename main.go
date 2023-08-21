@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"os"
 	"bufio"
 	"crypto/ecdsa"
@@ -11,6 +12,8 @@ import (
 	"fmt"
 
 	"GoBlockchain/blockchain"
+	"GoBlockchain/p2p"
+	"GoBlockchain/node"
 )
 
 type CommandLine struct {
@@ -22,16 +25,52 @@ func (cli *CommandLine) printChain() {
 }
 
 func main() {
-	chain := blockchain.InitBlockChain()
+	// Flags
+	entryIP := flag.String("entry-ip", "", "IP address of the entry node")
+	entryPort := flag.String("entry-port", "", "Port of the entry node")
+	serverPort := flag.String("server-port", "", "Port of the current node")
+	dataDir := flag.String("data-dir", "", "Data directory for the blockchain")
+	flag.Parse()
+
+	if *dataDir == "" {
+		*dataDir = os.TempDir()
+	}
+
+	if *entryIP == "" || *entryPort == "" || *serverPort == "" || *dataDir == "" {
+		fmt.Println("Missing flags. Please try again.")
+		return
+	}
+
+	// Init client and server
+	client := p2p.Client{
+		Peers: []p2p.Peer{
+			{IP: *entryIP, Port: *entryPort},
+			{IP: "localhost", Port: *serverPort},
+		},
+	}
+	server := p2p.Server{
+		Port:   *serverPort,
+		Client: &client,
+	}
+
+	// Init the blockchain
+	chain := blockchain.InitBlockChain(*dataDir)
 	defer chain.Database.Close()
 
-	go chain.MineMempool()
+	// Create the Node object
+	node := node.NewNode(&client, &server, chain)
 
+	// Start the Node
+	node.Start()
+
+	// Init the reader
 	reader := bufio.NewReader(os.Stdin)
 
+	// Init node account
 	var privateKey *ecdsa.PrivateKey
 	var publicKey ecdsa.PublicKey
 
+	// Start the CLI
 	for {
 		fmt.Println("Commands:")
 		fmt.Println("1) createaccount - Create a new account")

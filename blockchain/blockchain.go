@@ -11,10 +11,6 @@ import (
 	"github.com/dgraph-io/badger"
 )
 
-const (
-	dbPath = "./tmp/blocks"
-)
-
 type BlockChain struct {
 	LastHash []byte
 	Database *badger.DB
@@ -25,15 +21,15 @@ type BlockChainIterator struct {
 	Database    *badger.DB
 }
 
-func InitBlockChain() *BlockChain {
+func InitBlockChain(dataDir string) *BlockChain {
 	var lastHash []byte
 
-	opts := badger.DefaultOptions(dbPath)
+	opts := badger.DefaultOptions(dataDir)
 
-	if _, err := os.Stat(dbPath); os.IsNotExist(err) {
-		err := os.MkdirAll(dbPath, 0755)
+	if _, err := os.Stat(dataDir); os.IsNotExist(err) {
+		err := os.MkdirAll(dataDir, 0755)
 		if err != nil {
-			log.Fatal("Error Creating Dir: ", dbPath, " ", err)
+			log.Fatal("Error Creating Dir: ", dataDir, " ", err)
 		}
 	}
 	db, err := badger.Open(opts)
@@ -57,7 +53,7 @@ func InitBlockChain() *BlockChain {
 			err = item.Value(func(val []byte) error {
 				lastHash = append([]byte{}, val...)
 				return nil
-				})
+			})
 			return err
 		}
 	})
@@ -67,7 +63,6 @@ func InitBlockChain() *BlockChain {
 	blockchain := BlockChain{lastHash, db}
 	return &blockchain
 }
-
 
 func (chain *BlockChain) AddBlock(transactions []*Transaction) {
 	var lastHash []byte
