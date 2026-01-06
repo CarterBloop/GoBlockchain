@@ -1,4 +1,4 @@
-# GoBlockchain (IN DEVELOPMENT)
+# GoBlockchain
 
 GoBlockchain is a simple blockchain-based voting system implemented in Go. It allows users to create accounts, vote on proposals, and view the blockchain. The system uses a peer-to-peer network to propagate and synchronize data across multiple nodes, ensuring a decentralized and secure voting process.
 
